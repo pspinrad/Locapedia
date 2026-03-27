@@ -113,7 +113,7 @@
       }
 
       try {
-        const { error } = await supabase
+        const { error } = await db
           .from(CONFIG.table_approved)
           .update(values)
           .eq("id", obj.id);
@@ -147,7 +147,7 @@
 
     document.getElementById("confirm-delete-btn").addEventListener("click", async () => {
       try {
-        const { error } = await supabase
+        const { error } = await db
           .from(CONFIG.table_approved)
           .delete()
           .eq("id", obj.id);

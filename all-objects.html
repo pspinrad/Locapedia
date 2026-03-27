@@ -58,7 +58,7 @@
 
     async function loadAll() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from(CONFIG.table_approved)
           .select("*")
           .order("name");

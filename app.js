@@ -17,7 +17,7 @@
 
 // -- Supabase client -----------------------------------------
 
-const supabase = window.supabase.createClient(
+const db = window.supabase.createClient(
   CONFIG.supabase_url,
   CONFIG.supabase_key
 );
@@ -206,7 +206,7 @@ const SEARCH = {
     const q = query.trim().toLowerCase();
     if (!q) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from(CONFIG.table_approved)
       .select("*")
       .order("name");
@@ -223,7 +223,7 @@ const SEARCH = {
   // Advanced search: match each non-empty field value.
   // All provided values must match (AND logic).
   async advanced(values) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from(CONFIG.table_approved)
       .select("*")
       .order("name");

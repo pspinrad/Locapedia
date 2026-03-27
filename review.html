@@ -96,14 +96,14 @@
 
       try {
         // Insert into approved table
-        const { error: insertError } = await supabase
+        const { error: insertError } = await db
           .from(CONFIG.table_approved)
           .insert([values]);
         if (insertError) throw insertError;
 
         // Delete from pending table
         if (submission.id) {
-          const { error: deleteError } = await supabase
+          const { error: deleteError } = await db
             .from(CONFIG.table_pending)
             .delete()
             .eq("id", submission.id);
@@ -127,7 +127,7 @@
 
       try {
         if (submission.id) {
-          const { error } = await supabase
+          const { error } = await db
             .from(CONFIG.table_pending)
             .delete()
             .eq("id", submission.id);

@@ -155,7 +155,7 @@
       const container = document.getElementById("pending-list");
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from(CONFIG.table_pending)
           .select("*")
           .order("created_at", { ascending: false });
@@ -203,7 +203,7 @@
       const listEl = document.getElementById("published-list");
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from(CONFIG.table_approved)
           .select("*")
           .order("name");
@@ -254,7 +254,7 @@
 
     document.getElementById("backup-btn").addEventListener("click", async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from(CONFIG.table_approved)
           .select("*")
           .order("name");

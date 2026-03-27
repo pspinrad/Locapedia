@@ -87,7 +87,7 @@
       formStatus.textContent = "Submitting…";
 
       try {
-        const { error } = await supabase
+        const { error } = await db
           .from(CONFIG.table_pending)
           .insert([values]);
 
