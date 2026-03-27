@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Business Models — Locapedia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1>All Business Models</h1>
+      <p>
+        A complete alphabetical listing of all published business models
+        in the Locapedia database. Click any name to view its full entry.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="results-count" id="object-count"></p>
+      <ul class="alpha-list mt-16" id="alpha-list"></ul>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    const alphaList   = document.getElementById("alpha-list");
+    const objectCount = document.getElementById("object-count");
+
+    // -- Load all approved objects, sorted alphabetically ----
+
+    async function loadAll() {
+      try {
+        const { data, error } = await supabase
+          .from(CONFIG.table_approved)
+          .select("*")
+          .order("name");
+
+        if (error) throw error;
+
+        objectCount.textContent =
+          `${data.length} model${data.length !== 1 ? "s" : ""} published`;
+
+        if (!data.length) {
+          const li = document.createElement("li");
+          li.className = "no-results";
+          li.textContent = "No business models have been published yet.";
+          alphaList.appendChild(li);
+          return;
+        }
+
+        data.forEach(obj => {
+          const li = document.createElement("li");
+          const a  = document.createElement("a");
+          a.href = "#";
+          a.textContent = obj.name || "(unnamed)";
+          a.addEventListener("click", e => {
+            e.preventDefault();
+            // Return to this page (all-objects) when Show is closed
+            NAV.openShow(obj, "all-objects.html");
+          });
+          li.appendChild(a);
+          alphaList.appendChild(li);
+        });
+
+      } catch (err) {
+        alphaList.innerHTML =
+          `<li class="no-results">Failed to load: ${err.message}</li>`;
+      }
+    }
+
+    loadAll();
+
+  </script>
+</body>
+</html>

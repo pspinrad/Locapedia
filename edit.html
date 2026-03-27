@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Model — Locapedia Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1 id="page-title">Edit Business Model</h1>
+      <p>
+        Edit field values below and click <strong>Update</strong> to save,
+        or <strong>Delete</strong> to permanently remove this model.
+      </p>
+    </div>
+
+    <div class="card">
+      <!-- Form fields populated with current database values -->
+      <div id="form-area"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="update-btn">Update</button>
+        <button class="btn btn-danger"  id="delete-btn">Delete</button>
+        <button class="btn btn-secondary" id="back-btn">← Back</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================
+       Delete confirmation modal
+  ======================================================= -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h2 id="modal-title">Delete this model?</h2>
+      <p id="modal-body">
+        This action cannot be undone. The model will be permanently removed
+        from the Locapedia database.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-danger"     id="confirm-delete-btn">Confirm Delete</button>
+        <button class="btn btn-secondary"  id="cancel-delete-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    // Redirect non-admins to the admin login page
+    AUTH.requireAdmin();
+
+    const formArea  = document.getElementById("form-area");
+    const pageTitle = document.getElementById("page-title");
+    const modal     = document.getElementById("delete-modal");
+    const modalTitle = document.getElementById("modal-title");
+
+    // -- Load the object passed via sessionStorage -----------
+
+    const raw = sessionStorage.getItem("locapedia_edit_obj");
+    if (!raw) {
+      window.location.href = "admin.html";
+    }
+    const obj = JSON.parse(raw);
+
+    if (obj.name) {
+      pageTitle.textContent = `Edit: ${obj.name}`;
+      modalTitle.textContent = `Delete "${obj.name}": Are You Sure?`;
+    }
+
+    // Render editable form pre-populated with current values
+    RENDER.editableForm(formArea, "edit", obj);
+
+    // -- Update the record in Supabase -----------------------
+
+    document.getElementById("update-btn").addEventListener("click", async () => {
+      const values = UTIL.collectFormValues(formArea);
+
+      const missing = UTIL.validateMandatory(values);
+      if (missing.length) {
+        FLASH.show(
+          `Required fields missing: ${missing.join(", ")}`,
+          "error"
+        );
+        return;
+      }
+
+      try {
+        const { error } = await supabase
+          .from(CONFIG.table_approved)
+          .update(values)
+          .eq("id", obj.id);
+
+        if (error) throw error;
+
+        FLASH.queue(`"${values.name}" has been updated.`, "success");
+        window.location.href = "admin.html";
+
+      } catch (err) {
+        FLASH.show("Update failed: " + err.message, "error", 0);
+      }
+    });
+
+    // -- Delete: open confirmation modal ---------------------
+
+    document.getElementById("delete-btn").addEventListener("click", () => {
+      modal.classList.add("open");
+    });
+
+    document.getElementById("cancel-delete-btn").addEventListener("click", () => {
+      modal.classList.remove("open");
+    });
+
+    // Close modal if user clicks outside it
+    modal.addEventListener("click", e => {
+      if (e.target === modal) modal.classList.remove("open");
+    });
+
+    // -- Confirm delete: remove from Supabase ----------------
+
+    document.getElementById("confirm-delete-btn").addEventListener("click", async () => {
+      try {
+        const { error } = await supabase
+          .from(CONFIG.table_approved)
+          .delete()
+          .eq("id", obj.id);
+
+        if (error) throw error;
+
+        // Queue flash and return to search with deletion notice
+        FLASH.queue(`"${obj.name}" has been deleted.`, "warning");
+        window.location.href = "index.html";
+
+      } catch (err) {
+        modal.classList.remove("open");
+        FLASH.show("Delete failed: " + err.message, "error", 0);
+      }
+    });
+
+    // -- Back to admin dashboard -----------------------------
+
+    document.getElementById("back-btn").addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+
+  </script>
+</body>
+</html>

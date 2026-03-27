@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Locapedia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Login form (shown when not authenticated)
+  ======================================================= -->
+  <main class="page" id="login-view">
+    <div class="login-wrap">
+      <div class="card">
+        <div class="page-header" style="border:none; margin-bottom:20px; padding-bottom:0;">
+          <h1>Admin Login</h1>
+          <p>Enter the admin password to manage Locapedia.</p>
+        </div>
+
+        <div class="field-group">
+          <label for="password-input">Password</label>
+          <input type="password" id="password-input" autocomplete="current-password">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="login-btn">Log In</button>
+          <span class="text-muted" id="login-error"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ======================================================
+       Admin dashboard (shown when authenticated)
+  ======================================================= -->
+  <main class="page hidden" id="admin-view">
+
+    <div class="page-header">
+      <h1>Admin Dashboard</h1>
+      <p>
+        Review pending submissions, browse the published database to edit
+        or delete entries, or back up the database.
+        <button class="btn btn-secondary" id="logout-btn"
+          style="margin-left:16px; padding:4px 14px; font-size:0.85rem;">
+          Log Out
+        </button>
+      </p>
+    </div>
+
+    <!-- Pending submissions queue -->
+    <h2 style="font-family:var(--font-heading); font-size:1.2rem; margin-bottom:12px;">
+      Pending Submissions
+    </h2>
+    <div id="pending-list">
+      <p class="text-muted">Loading…</p>
+    </div>
+
+    <!-- Published objects (for editing/deleting) -->
+    <h2 style="font-family:var(--font-heading); font-size:1.2rem; margin:32px 0 12px;">
+      Published Models
+    </h2>
+    <div class="search-bar" style="max-width:400px;">
+      <input type="text" id="admin-search" placeholder="Filter by name…">
+    </div>
+    <ul class="results-list" id="published-list"></ul>
+
+    <!-- Database backup -->
+    <h2 style="font-family:var(--font-heading); font-size:1.2rem; margin:32px 0 12px;">
+      Database Backup
+    </h2>
+    <div class="card" style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <button class="btn btn-secondary" id="backup-btn">
+        ⬇ Download All as JSON
+      </button>
+      <span class="text-muted" style="font-size:0.88rem;">
+        Downloads every published model as a JSON file you can use to restore
+        the database (see README for restore instructions).
+      </span>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    const loginView  = document.getElementById("login-view");
+    const adminView  = document.getElementById("admin-view");
+    const loginBtn   = document.getElementById("login-btn");
+    const logoutBtn  = document.getElementById("logout-btn");
+    const loginError = document.getElementById("login-error");
+    const passwordInput = document.getElementById("password-input");
+
+    // -- Auth state ------------------------------------------
+
+    function showAdmin() {
+      loginView.classList.add("hidden");
+      adminView.classList.remove("hidden");
+      loadPending();
+      loadPublished();
+      FLASH.checkQueued();
+    }
+
+    if (AUTH.isLoggedIn()) showAdmin();
+
+    // -- Login -----------------------------------------------
+
+    loginBtn.addEventListener("click", () => {
+      if (AUTH.login(passwordInput.value)) {
+        showAdmin();
+      } else {
+        loginError.textContent = "Incorrect password.";
+        passwordInput.value = "";
+        passwordInput.focus();
+      }
+    });
+
+    passwordInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") loginBtn.click();
+    });
+
+    // -- Logout ----------------------------------------------
+
+    logoutBtn.addEventListener("click", () => {
+      AUTH.logout();
+      loginView.classList.remove("hidden");
+      adminView.classList.add("hidden");
+      passwordInput.value = "";
+    });
+
+    // -- Load pending submissions ----------------------------
+
+    async function loadPending() {
+      const container = document.getElementById("pending-list");
+
+      try {
+        const { data, error } = await supabase
+          .from(CONFIG.table_pending)
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (!data.length) {
+          container.innerHTML =
+            '<p class="text-muted">No pending submissions.</p>';
+          return;
+        }
+
+        container.innerHTML = "";
+        data.forEach(sub => {
+          const item = document.createElement("div");
+          item.className = "queue-item";
+
+          item.innerHTML = `
+            <div class="queue-item-name">${sub.name || "(unnamed)"}</div>
+            <div class="queue-item-meta">${sub.sector || ""}</div>
+            <span class="badge-pending">Pending</span>
+            <button class="btn btn-primary" style="padding:5px 14px; font-size:0.85rem;">
+              Review
+            </button>
+          `;
+
+          item.querySelector("button").addEventListener("click", () => {
+            NAV.openReview(sub);
+          });
+
+          container.appendChild(item);
+        });
+
+      } catch (err) {
+        container.innerHTML =
+          `<p class="text-muted">Failed to load: ${err.message}</p>`;
+      }
+    }
+
+    // -- Load published objects ------------------------------
+
+    let allPublished = [];
+
+    async function loadPublished() {
+      const listEl = document.getElementById("published-list");
+
+      try {
+        const { data, error } = await supabase
+          .from(CONFIG.table_approved)
+          .select("*")
+          .order("name");
+
+        if (error) throw error;
+
+        allPublished = data;
+        renderPublished(data);
+
+      } catch (err) {
+        listEl.innerHTML =
+          `<li class="no-results">Failed to load: ${err.message}</li>`;
+      }
+    }
+
+    function renderPublished(objects) {
+      const listEl = document.getElementById("published-list");
+      listEl.innerHTML = "";
+
+      if (!objects.length) {
+        const li = document.createElement("li");
+        li.className = "no-results";
+        li.textContent = "No published models.";
+        listEl.appendChild(li);
+        return;
+      }
+
+      objects.forEach(obj => {
+        listEl.appendChild(
+          RENDER.resultRow(obj, o => NAV.openEdit(o))
+        );
+        // Override "Show →" label to "Edit →" for admin view
+        const btn = listEl.lastChild.querySelector(".result-show");
+        if (btn) btn.textContent = "Edit →";
+      });
+    }
+
+    // Filter published list by name as admin types
+    document.getElementById("admin-search").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allPublished.filter(o =>
+        (o.name || "").toLowerCase().includes(q)
+      );
+      renderPublished(filtered);
+    });
+
+    // -- Backup: download all published as JSON --------------
+
+    document.getElementById("backup-btn").addEventListener("click", async () => {
+      try {
+        const { data, error } = await supabase
+          .from(CONFIG.table_approved)
+          .select("*")
+          .order("name");
+
+        if (error) throw error;
+
+        const blob = new Blob(
+          [JSON.stringify(data, null, 2)],
+          { type: "application/json" }
+        );
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.download = `locapedia-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+      } catch (err) {
+        FLASH.show("Backup failed: " + err.message, "error", 0);
+      }
+    });
+
+  </script>
+</body>
+</html>

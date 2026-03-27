@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Search — Locapedia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1>Advanced Search</h1>
+      <p>
+        Filter business models by any combination of fields.
+        Leave fields blank to skip them. All provided values must match
+        (AND logic). Results appear below the form.
+      </p>
+    </div>
+
+    <div class="card">
+      <!-- Advanced search fields are rendered here by JS (all single-line) -->
+      <div id="advanced-form"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="search-btn">Search</button>
+        <button class="btn btn-secondary" id="clear-btn">Clear</button>
+      </div>
+    </div>
+
+    <!-- Result count -->
+    <p class="results-count mt-16" id="results-count"></p>
+
+    <!-- Results list -->
+    <ul class="results-list" id="results-list"></ul>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    const formEl      = document.getElementById("advanced-form");
+    const searchBtn   = document.getElementById("search-btn");
+    const clearBtn    = document.getElementById("clear-btn");
+    const resultsList = document.getElementById("results-list");
+    const resultsCount = document.getElementById("results-count");
+
+    // -- Build the advanced search form ----------------------
+    // All fields render as single-line inputs regardless of their
+    // native type, because we're filtering, not authoring.
+
+    function buildForm() {
+      let currentSection = null;
+
+      FIELDS.forEach(field => {
+
+        // Section headings
+        if (field.section !== currentSection) {
+          currentSection = field.section;
+          const heading = document.createElement("div");
+          heading.className = "form-section-title";
+          heading.textContent = currentSection === "canvas"
+            ? "Business Model Canvas"
+            : "General Information";
+          formEl.appendChild(heading);
+        }
+
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        const label = document.createElement("label");
+        label.htmlFor = `field_${field.key}`;
+        label.textContent = field.label;
+        group.appendChild(label);
+
+        // Always single-line in advanced search
+        const input = document.createElement("input");
+        input.type        = "text";
+        input.id          = `field_${field.key}`;
+        input.name        = field.key;
+        input.placeholder = `Filter by ${field.label.toLowerCase()}…`;
+        group.appendChild(input);
+
+        formEl.appendChild(group);
+      });
+    }
+
+    buildForm();
+
+    // -- Collect filter values --------------------------------
+
+    function collectFilters() {
+      const values = {};
+      FIELDS.forEach(field => {
+        const el = document.getElementById(`field_${field.key}`);
+        if (el) values[field.key] = el.value;
+      });
+      return values;
+    }
+
+    // -- Run search -------------------------------------------
+
+    async function runSearch() {
+      const values = collectFilters();
+      const hasAny = Object.values(values).some(v => v.trim());
+      if (!hasAny) {
+        FLASH.show("Enter at least one filter value to search.", "warning");
+        return;
+      }
+
+      searchBtn.disabled = true;
+      searchBtn.textContent = "Searching…";
+      resultsList.innerHTML = "";
+
+      try {
+        const results = await SEARCH.advanced(values);
+        SEARCH.renderResults(resultsList, resultsCount, results, showObject);
+      } catch (err) {
+        FLASH.show("Search failed: " + err.message, "error", 0);
+      } finally {
+        searchBtn.disabled = false;
+        searchBtn.textContent = "Search";
+      }
+    }
+
+    searchBtn.addEventListener("click", runSearch);
+
+    // Allow Enter key in any input to trigger search
+    formEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") runSearch();
+    });
+
+    // -- Clear form -------------------------------------------
+
+    clearBtn.addEventListener("click", () => {
+      FIELDS.forEach(field => {
+        const el = document.getElementById(`field_${field.key}`);
+        if (el) el.value = "";
+      });
+      resultsList.innerHTML = "";
+      resultsCount.textContent = "";
+    });
+
+    // -- Open Show page ---------------------------------------
+
+    function showObject(obj) {
+      NAV.openShow(obj, "advanced-search.html");
+    }
+
+  </script>
+</body>
+</html>

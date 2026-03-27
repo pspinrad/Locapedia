@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Business Model — Locapedia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1>Submit a Business Model</h1>
+      <p>
+        Know a small-business model worth sharing? Fill in as much as you
+        can below. Fields marked <span style="color:var(--accent)">*</span>
+        are required. Your submission will be reviewed before it appears
+        in the public database.
+      </p>
+    </div>
+
+    <div class="card">
+      <!-- Form fields rendered dynamically by JS -->
+      <div id="form-area"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="submit-btn">Submit</button>
+        <span class="text-muted" id="form-status"></span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    const formArea   = document.getElementById("form-area");
+    const submitBtn  = document.getElementById("submit-btn");
+    const formStatus = document.getElementById("form-status");
+
+    // -- Render editable form in "submit" mode ---------------
+    // Placeholders show helper text; mandatory fields marked with *.
+
+    RENDER.editableForm(formArea, "submit");
+
+    // -- Handle submission -----------------------------------
+
+    submitBtn.addEventListener("click", async () => {
+
+      const values = UTIL.collectFormValues(formArea);
+
+      // Validate mandatory fields
+      const missing = UTIL.validateMandatory(values);
+      if (missing.length) {
+        FLASH.show(
+          `Please fill in the required fields: ${missing.join(", ")}`,
+          "error"
+        );
+        return;
+      }
+
+      submitBtn.disabled = true;
+      formStatus.textContent = "Submitting…";
+
+      try {
+        const { error } = await supabase
+          .from(CONFIG.table_pending)
+          .insert([values]);
+
+        if (error) throw error;
+
+        // Success: clear form and show confirmation
+        formArea.innerHTML = "";
+        RENDER.editableForm(formArea, "submit");  // fresh empty form
+
+        // Reset all inputs
+        formArea.querySelectorAll("input, textarea").forEach(el => {
+          el.value = "";
+        });
+
+        FLASH.show(
+          `Thank you! "${values.name}" has been submitted for review.`,
+          "success",
+          0   // keep banner visible until page navigation
+        );
+        formStatus.textContent = "";
+        submitBtn.disabled = false;
+
+      } catch (err) {
+        FLASH.show("Submission failed: " + err.message, "error", 0);
+        formStatus.textContent = "";
+        submitBtn.disabled = false;
+      }
+    });
+
+  </script>
+</body>
+</html>

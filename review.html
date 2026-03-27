@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Submission — Locapedia Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1 id="page-title">Review Submission</h1>
+      <p>
+        Review the submitted values below. Edit any fields as needed,
+        then click <strong>Add</strong> to publish this model, or
+        <strong>Discard</strong> to delete the submission without publishing.
+      </p>
+    </div>
+
+    <div class="card">
+      <!-- Form fields populated with submission values -->
+      <div id="form-area"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="add-btn">Add to Database</button>
+        <button class="btn btn-danger"  id="discard-btn">Discard Submission</button>
+        <button class="btn btn-secondary" id="back-btn">← Back</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    // Redirect non-admins to the admin login page
+    AUTH.requireAdmin();
+
+    const formArea = document.getElementById("form-area");
+    const pageTitle = document.getElementById("page-title");
+
+    // -- Load the submission passed via sessionStorage -------
+
+    const raw = sessionStorage.getItem("locapedia_review_obj");
+    if (!raw) {
+      window.location.href = "admin.html";
+    }
+    const submission = JSON.parse(raw);
+
+    // Set page title with submission name
+    if (submission.name) {
+      pageTitle.textContent = `Review: ${submission.name}`;
+    }
+
+    // Render editable form pre-populated with submitted values
+    RENDER.editableForm(formArea, "review", submission);
+
+    // -- Add to published database ---------------------------
+
+    document.getElementById("add-btn").addEventListener("click", async () => {
+      const values = UTIL.collectFormValues(formArea);
+
+      const missing = UTIL.validateMandatory(values);
+      if (missing.length) {
+        FLASH.show(
+          `Required fields missing: ${missing.join(", ")}`,
+          "error"
+        );
+        return;
+      }
+
+      try {
+        // Insert into approved table
+        const { error: insertError } = await supabase
+          .from(CONFIG.table_approved)
+          .insert([values]);
+        if (insertError) throw insertError;
+
+        // Delete from pending table
+        if (submission.id) {
+          const { error: deleteError } = await supabase
+            .from(CONFIG.table_pending)
+            .delete()
+            .eq("id", submission.id);
+          if (deleteError) throw deleteError;
+        }
+
+        FLASH.queue(`"${values.name}" has been published.`, "success");
+        window.location.href = "admin.html";
+
+      } catch (err) {
+        FLASH.show("Failed to publish: " + err.message, "error", 0);
+      }
+    });
+
+    // -- Discard submission ----------------------------------
+
+    document.getElementById("discard-btn").addEventListener("click", async () => {
+      if (!confirm(`Discard this submission by "${submission.name}"? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        if (submission.id) {
+          const { error } = await supabase
+            .from(CONFIG.table_pending)
+            .delete()
+            .eq("id", submission.id);
+          if (error) throw error;
+        }
+
+        FLASH.queue(`Submission "${submission.name}" discarded.`, "warning");
+        window.location.href = "admin.html";
+
+      } catch (err) {
+        FLASH.show("Failed to discard: " + err.message, "error", 0);
+      }
+    });
+
+    // -- Back to admin dashboard -----------------------------
+
+    document.getElementById("back-btn").addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+
+  </script>
+</body>
+</html>

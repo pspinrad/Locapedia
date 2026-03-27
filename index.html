@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Locapedia — Small Business Model Reference</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <h1>Search Business Models</h1>
+      <p>
+        Search the Locapedia database of small-business models by name,
+        description, or sector. Use
+        <a href="advanced-search.html">Advanced Search</a> to filter
+        by any field.
+      </p>
+    </div>
+
+    <!-- Simple search bar -->
+    <div class="card">
+      <div class="search-bar">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search by name, description, or sector…"
+          autocomplete="off"
+          autofocus
+        >
+        <button class="btn btn-primary" id="search-btn">Search</button>
+      </div>
+      <p class="text-muted">
+        Press Enter or click Search. Results appear below.
+      </p>
+    </div>
+
+    <!-- Result count -->
+    <p class="results-count mt-16" id="results-count"></p>
+
+    <!-- Results list -->
+    <ul class="results-list" id="results-list"></ul>
+
+  </main>
+
+  <!-- ======================================================
+       Scripts
+       Load order: Supabase → marked → config → app → page
+  ======================================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    // -- Page initialisation ---------------------------------
+
+    const searchInput = document.getElementById("search-input");
+    const searchBtn   = document.getElementById("search-btn");
+    const resultsList = document.getElementById("results-list");
+    const resultsCount = document.getElementById("results-count");
+
+    // Show any queued flash (e.g. "X has been deleted" after admin action)
+    FLASH.checkQueued();
+
+    // -- Search action ---------------------------------------
+
+    async function runSearch() {
+      const query = searchInput.value.trim();
+      if (!query) return;
+
+      searchBtn.disabled = true;
+      searchBtn.textContent = "Searching…";
+      resultsList.innerHTML = "";
+
+      try {
+        const results = await SEARCH.simple(query);
+        SEARCH.renderResults(resultsList, resultsCount, results, showObject);
+      } catch (err) {
+        FLASH.show("Search failed: " + err.message, "error", 0);
+      } finally {
+        searchBtn.disabled = false;
+        searchBtn.textContent = "Search";
+      }
+    }
+
+    searchBtn.addEventListener("click", runSearch);
+    searchInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") runSearch();
+    });
+
+    // -- Open Show page --------------------------------------
+
+    function showObject(obj) {
+      NAV.openShow(obj, "index.html");
+    }
+
+  </script>
+</body>
+</html>

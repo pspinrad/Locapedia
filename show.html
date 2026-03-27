@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>View Model — Locapedia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================
+       Site header / navigation
+  ======================================================= -->
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-logo" href="index.html">Locapedia</a>
+      <nav class="site-nav">
+        <a href="index.html">Search</a>
+        <a href="advanced-search.html">Advanced Search</a>
+        <a href="all-objects.html">All Models</a>
+        <a href="submit.html">Submit a Model</a>
+        <a href="admin.html" class="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================
+       Page content
+  ======================================================= -->
+  <main class="page">
+
+    <div class="page-header">
+      <!-- Title is set dynamically from the object's name -->
+      <h1 id="page-title">Business Model</h1>
+      <p id="page-subtitle" class="text-muted"></p>
+    </div>
+
+    <div class="card">
+      <!-- Read-only field display rendered here by JS -->
+      <div id="display-area"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="close-btn">← Close</button>
+
+        <!-- Admin-only: Edit button (only shown if admin is logged in) -->
+        <button class="btn btn-primary hidden" id="edit-btn">Edit</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+
+    const displayArea = document.getElementById("display-area");
+    const pageTitle   = document.getElementById("page-title");
+    const pageSubtitle = document.getElementById("page-subtitle");
+    const closeBtn    = document.getElementById("close-btn");
+    const editBtn     = document.getElementById("edit-btn");
+
+    // -- Load the object passed via sessionStorage -----------
+
+    const raw = sessionStorage.getItem("locapedia_show_obj");
+    const returnPage = sessionStorage.getItem("locapedia_show_return") || "index.html";
+
+    if (!raw) {
+      // Nothing to show; redirect to search
+      window.location.href = "index.html";
+    } else {
+      const obj = JSON.parse(raw);
+
+      // Set page title
+      pageTitle.textContent = obj.name || "Business Model";
+      if (obj.sector) pageSubtitle.textContent = obj.sector;
+
+      // Render read-only fields
+      RENDER.readOnly(displayArea, obj);
+
+      // Show Edit button to logged-in admins
+      if (AUTH.isLoggedIn()) {
+        editBtn.classList.remove("hidden");
+        editBtn.addEventListener("click", () => NAV.openEdit(obj));
+      }
+    }
+
+    // -- Close button returns to wherever the user came from -
+
+    closeBtn.addEventListener("click", () => {
+      window.location.href = returnPage;
+    });
+
+  </script>
+</body>
+</html>
