@@ -1,5 +1,5 @@
 # Keep credentials out of version control
-config.js
+# config.js
 
 # macOS
 .DS_Store
