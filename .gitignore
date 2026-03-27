@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -34,3 +35,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+=======
+# Keep credentials out of version control
+config.js
+
+# macOS
+.DS_Store
+
+# Editor temp files
+*.swp
+*~
+>>>>>>> 09c7844 (First commmit)
